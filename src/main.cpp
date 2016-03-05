@@ -9,10 +9,11 @@ int train(int);
 int test(void);
 int prepare(void);
 int run(void);
+int detect(char *);
 
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
+    if (argc < 2) {
         LOG("We need an argument");
         return 0;
     }
@@ -30,6 +31,12 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[1], "prepare") == 0) {
         return prepare();
+    }
+    
+    if (strcmp(argv[1], "-d") == 0 && argc == 3) {
+        char * filename = argv[2];
+        assert(filename != NULL);
+        return detect(filename);
     }
     if (strcmp(argv[1], "run") == 0) {
         return run();

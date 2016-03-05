@@ -201,9 +201,15 @@ void LOG(const char *fmt, ...) {
 Config::Config() {
     dataset = "../data/68";
     saved_file_name = "../model/68.model";
-    stages_n = 5;
+   /* stages_n = 5;
     tree_n = 6;
     tree_depth = 5;
+    landmark_n = 68;
+    initShape_n = 10;
+   */
+    stages_n = 5;
+    tree_n = 15;
+    tree_depth = 7;
     landmark_n = 68;
     initShape_n = 10;
     bagging_overlap = 0.4;

@@ -3,13 +3,18 @@
 #include <cstdio>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/objdetect/objdetect.hpp>
 
 using namespace cv;
 using namespace std;
 using namespace lbf;
 
+CascadeClassifier faceDec("../model/haarcascade_frontalface_alt.xml");
+
 // dirty but works
 void parseTxt(string &txt, vector<Mat> &imgs, vector<Mat> &gt_shapes, vector<BBox> &bboxes);
+
+Rect enlarge(Rect r, double s);
 
 int test(void) {
     Config &config = Config::GetInstance();
@@ -83,4 +88,74 @@ int run(void) {
     }
     fclose(fd);
     return 0;
+}
+
+/* used to detect a single image */
+int detect(char * filename){
+    // get the configure file
+    Config &config = Config::GetInstance();
+    int landmark_n = config.landmark_n; 
+    double bbox[4]; // the bounding box
+    vector<double> x(landmark_n), y(landmark_n); //used to strore the shape
+    // regressors
+    LbfCascador lbf_cascador;
+    // load the trained model
+    FILE *model = fopen(config.saved_file_name.c_str(), "rb");
+    lbf_cascador.Read(model);
+    fclose(model);
+    
+    // read the image based on filename
+    assert(filename != NULL);
+    Mat img = imread(filename);
+    // detect the face and get the bounding box
+    // based on CascadedClassifier provided
+    // by OpenCV
+    vector<Rect> rects;
+    faceDec.detectMultiScale(img, rects, 1.05, 3, CV_HAAR_SCALE_IMAGE, Size(30, 30));
+    if (rects.size() == 0) return -1;
+
+    for(int i = 0; i < rects.size(); i++){
+        Rect r = rects[i];
+        printf("the bounding box: %d %d %d %d\n",r.x, r.y, r.width, r.height);
+        //show the bounding box:
+        rectangle(img, r, Scalar(255,255,0));
+        imshow("bounding box",img);
+        waitKey(0); 
+
+        // enlarge the bounding box
+        Rect rec = enlarge(r, 1.2);
+        // double check to guarentee that
+        // the bounding box is contained by the img.
+        rec.x = max(0, rec.x);
+        rec.y = max(0, rec.y);
+        rec.width = min(img.cols - rec.x, rec.width);
+        rec.height = min(img.rows - rec.y, rec.height);
+
+        Mat img_t = img(rec).clone();
+        BBox bbox_(abs(rec.x-r.x),abs(rec.y - r.y), r.width, r.height);
+
+        Mat gray;
+        cvtColor(img_t, gray, CV_BGR2GRAY);
+        LOG("Detection--- %s", filename);
+        Mat shape = lbf_cascador.Predict(gray, bbox_);
+        img_t = drawShapeInImage(img_t, shape, bbox_);
+        imshow("landmark", img_t);
+        waitKey(0);
+    }
+    return 0;
+}
+
+
+/*
+ * enlarge the bounding box by scaler s
+ */
+Rect enlarge(Rect r, double s){
+    Rect rec;
+    assert(s > 1.0);
+    rec.width = r.width * s;
+    rec.height= r.height * s;
+    rec.x = r.x - (rec.width - r.width)/2;
+    rec.y = r.y - (rec.height - r.height)/2;
+
+    return rec;
 }
